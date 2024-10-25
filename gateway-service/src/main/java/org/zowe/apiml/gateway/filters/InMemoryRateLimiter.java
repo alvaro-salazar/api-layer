@@ -29,7 +29,7 @@ public class InMemoryRateLimiter implements RateLimiter<InMemoryRateLimiter.Conf
     private final Map<String, Bucket> cache = new ConcurrentHashMap<>();
     @Value("${apiml.gateway.rateLimiterCapacity:20}")
     int capacity;
-    @Value("${apiml.gateway.rateLimiterTokens:1}")
+    @Value("${apiml.gateway.rateLimiterTokens:20}")
     int tokens;
     @Value("${apiml.gateway.rateLimiterRefillDuration:1}")
     Long refillDuration;

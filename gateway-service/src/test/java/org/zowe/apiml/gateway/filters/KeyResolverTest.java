@@ -56,7 +56,7 @@ public class KeyResolverTest {
 
         Mono<String> result = keyResolver.resolve(exchange);
 
-        assertNull(result.block());
+        assertEquals("", result.block());
     }
 }
 

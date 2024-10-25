@@ -32,7 +32,7 @@ public class InMemoryRateLimiterFilterFactory extends AbstractGatewayFilterFacto
     private final ApimlLogger apimlLog = ApimlLogger.empty();
     private final InMemoryRateLimiter rateLimiter;
     private final KeyResolver keyResolver;
-    @Value(value = "${apiml.routing.servicesToLimitRequestRate}")
+    @Value("${apiml.routing.servicesToLimitRequestRate:-}")
     List<String> serviceIds;
 
     public InMemoryRateLimiterFilterFactory(InMemoryRateLimiter rateLimiter, KeyResolver keyResolver) {
