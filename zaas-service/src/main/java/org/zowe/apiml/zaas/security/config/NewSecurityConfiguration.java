@@ -57,7 +57,7 @@ import org.zowe.apiml.security.common.login.*;
 import org.zowe.apiml.security.common.verify.CertificateValidator;
 import org.zowe.apiml.zaas.controllers.AuthController;
 import org.zowe.apiml.zaas.controllers.SafResourceAccessController;
-import org.zowe.apiml.zaas.error.controllers.InternalServerErrorController;
+import org.zowe.apiml.zaas.error.controllers.ZaasErrorController;
 import org.zowe.apiml.zaas.security.login.x509.X509AuthenticationProvider;
 import org.zowe.apiml.zaas.security.query.QueryFilter;
 import org.zowe.apiml.zaas.security.query.SuccessfulQueryHandler;
@@ -602,7 +602,7 @@ public class NewSecurityConfiguration {
                     // Endpoints that skip Spring Security completely
                     // There is no CORS filter on these endpoints. If you require CORS processing, use a defined filter chain
                     web.ignoring()
-                        .requestMatchers(InternalServerErrorController.ERROR_ENDPOINT, "/error",
+                        .requestMatchers(ZaasErrorController.ERROR_ENDPOINT, "/error",
                             "/application/info", "/application/version",
                             AuthController.CONTROLLER_PATH + AuthController.ALL_PUBLIC_KEYS_PATH,
                             AuthController.CONTROLLER_PATH + AuthController.CURRENT_PUBLIC_KEYS_PATH);

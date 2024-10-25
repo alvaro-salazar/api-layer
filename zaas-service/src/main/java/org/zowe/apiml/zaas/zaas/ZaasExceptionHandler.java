@@ -10,35 +10,63 @@
 
 package org.zowe.apiml.zaas.zaas;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.util.Assert;
+import org.springframework.web.HttpMediaTypeException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.reactive.resource.NoResourceFoundException;
+import org.springframework.web.server.MethodNotAllowedException;
+import org.springframework.web.servlet.HandlerExceptionResolver;
+import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.zowe.apiml.message.api.ApiMessageView;
+import org.zowe.apiml.message.core.MessageService;
+import org.zowe.apiml.passticket.IRRPassTicketGenerationException;
+import org.zowe.apiml.security.common.auth.saf.EndpointImproprietyConfigureException;
+import org.zowe.apiml.security.common.auth.saf.UnsupportedResourceClassException;
+import org.zowe.apiml.security.common.token.TokenExpireException;
+import org.zowe.apiml.security.common.token.TokenNotValidException;
+import org.zowe.apiml.zaas.error.ErrorUtils;
 import org.zowe.apiml.zaas.security.service.saf.SafIdtAuthException;
 import org.zowe.apiml.zaas.security.service.saf.SafIdtException;
 import org.zowe.apiml.zaas.security.service.schema.source.AuthSchemeException;
 import org.zowe.apiml.zaas.security.ticket.ApplicationNameNotFoundException;
-import org.zowe.apiml.message.api.ApiMessageView;
-import org.zowe.apiml.message.core.MessageService;
-import org.zowe.apiml.passticket.IRRPassTicketGenerationException;
-import org.zowe.apiml.security.common.token.TokenExpireException;
-import org.zowe.apiml.security.common.token.TokenNotValidException;
 
 import javax.management.ServiceNotFoundException;
+import javax.net.ssl.SSLException;
 
+@Slf4j
 @ControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @RequiredArgsConstructor
-public class ZaasExceptionHandler {
+public class ZaasExceptionHandler implements HandlerExceptionResolver {
+
+    private static final String WWW_AUTHENTICATE = "WWW-Authenticate";
+    private static String WWW_AUTHENTICATE_FORMAT = "Basic realm=\"%s\"";
+    private static final String DEFAULT_REALM = "Realm";
+
     private final MessageService messageService;
 
     @ExceptionHandler(value = {IRRPassTicketGenerationException.class})
     public ResponseEntity<ApiMessageView> handlePassTicketException(IRRPassTicketGenerationException ex) {
+        log.error(ex.getMessage());
         ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.security.ticket.generateFailed",
             ex.getErrorCode().getMessage()).mapToView();
         return ResponseEntity
-            .status(ex.getHttpStatus())
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
             .contentType(MediaType.APPLICATION_JSON)
             .body(messageView);
     }
@@ -96,4 +124,101 @@ public class ZaasExceptionHandler {
             .contentType(MediaType.APPLICATION_JSON)
             .body(messageView);
     }
+
+    private static String createHeaderValue(String realm) {
+        Assert.notNull(realm, "realm cannot be null");
+        return String.format(WWW_AUTHENTICATE_FORMAT, realm);
+    }
+
+    public void setWwwAuthenticateResponse(HttpServletResponse response) {
+        response.addHeader(WWW_AUTHENTICATE, createHeaderValue(DEFAULT_REALM));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiMessageView> handleAuthenticationException(HttpServletResponse response, AuthenticationException authenticationException) {
+        log.debug("Unauthorized access", authenticationException);
+        setWwwAuthenticateResponse(response);
+        ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.common.unauthorized").mapToView();
+        return ResponseEntity
+            .status(HttpStatus.UNAUTHORIZED)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(messageView);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiMessageView> handleAccessDeniedException(HttpServletRequest request, AccessDeniedException accessDeniedException) {
+        log.debug("Unauthenticated access", accessDeniedException);
+        ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.security.forbidden", request.getRequestURI()).mapToView();
+        return ResponseEntity
+            .status(HttpStatus.FORBIDDEN)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(messageView);
+    }
+
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ApiMessageView> handleNoResourceFoundException(NoResourceFoundException noResourceFoundException) {
+        log.debug("Resource not found", noResourceFoundException);
+        ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.common.notFound").mapToView();
+        return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(messageView);
+    }
+
+    @ExceptionHandler(SSLException.class)
+    public ResponseEntity<ApiMessageView> handleSslException(HttpServletRequest request, SSLException sslException) {
+        log.debug("SSL exception", sslException);
+        ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.common.tlsError", request.getRequestURI(), sslException.getMessage()).mapToView();
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(messageView);
+    }
+
+
+    @ExceptionHandler(UnsupportedResourceClassException.class)
+    public ResponseEntity<ApiMessageView> handleUnsupportedResourceClassException(UnsupportedResourceClassException unsupportedResourceClassException) {
+        log.debug("Unsupported resource class", unsupportedResourceClassException);
+        ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.security.common.auth.saf.endpoint.nonZoweClass", unsupportedResourceClassException.getResourceClass()).mapToView();
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(messageView);
+    }
+
+    @ExceptionHandler(EndpointImproprietyConfigureException.class)
+    public ResponseEntity<ApiMessageView> handleEndpointImproprietyConfigureException(EndpointImproprietyConfigureException improprietyConfigureException) {
+        log.debug("Endpoint is impropriety configured", improprietyConfigureException);
+        ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.security.common.auth.saf.endpoint.endpointImproprietyConfigure", improprietyConfigureException.getEndpoint()).mapToView();
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(messageView);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiMessageView> handleInternalException(Exception exception) {
+        log.debug("Unexpected internal error", exception);
+        ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.common.internalServerError").mapToView();
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(messageView);
+    }
+
+    @Override
+    public ModelAndView resolveException(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+        request.setAttribute(ErrorUtils.ATTR_ERROR_EXCEPTION, ex);
+
+        if (ex instanceof MethodNotAllowedException || ex instanceof HttpRequestMethodNotSupportedException) {
+            return new ModelAndView("/error/405");
+        } else if (ex instanceof HttpMediaTypeException) {
+            return new ModelAndView("/error/415");
+        } else if (ex instanceof HttpMessageNotReadableException) {
+            return new ModelAndView("/error/400");
+        }
+
+        return null;
+    }
+
 }
