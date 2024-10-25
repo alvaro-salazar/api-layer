@@ -47,7 +47,7 @@ public class InMemoryRateLimiterFilterFactory extends AbstractGatewayFilterFacto
             String requestPath = exchange.getRequest().getPath().elements().get(1).value();
             if (serviceIds.contains(requestPath)) {
                 return keyResolver.resolve(exchange).flatMap(key -> {
-                    if (key.isEmpty()){
+                    if (key.isEmpty()) {
                         return chain.filter(exchange);
                     }
                     return rateLimiter.isAllowed(config.getRouteId(), key).flatMap(response -> {
