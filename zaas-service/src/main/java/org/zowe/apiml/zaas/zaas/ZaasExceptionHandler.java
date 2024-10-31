@@ -211,6 +211,16 @@ public class ZaasExceptionHandler {
             .body(messageView);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiMessageView> handleInternalException(IllegalArgumentException exception) {
+        log.debug("Client sent illegal arguments", exception);
+        ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.common.badRequest").mapToView();
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(messageView);
+    }
+
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<ApiMessageView> handleUnsupportedMediaException(HttpMediaTypeNotSupportedException exception) {
         log.debug("Requested media type is not supported", exception);

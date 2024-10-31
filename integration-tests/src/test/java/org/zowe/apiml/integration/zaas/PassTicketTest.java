@@ -231,6 +231,20 @@ class PassTicketTest {
         }
 
         @Test
+        void givenNoContentType() {
+            //@formatter:off
+            given()
+                .body(new TicketRequest(APPLICATION_NAME).toString().getBytes())
+                .cookie(COOKIE, jwt)
+                .noContentType()
+                .when()
+                .post(ZAAS_TICKET_URI)
+                .then()
+                .statusCode(is(SC_BAD_REQUEST));
+            //@formatter:on
+        }
+
+        @Test
         void givenInvalidContentType() {
             //@formatter:off
             given()
