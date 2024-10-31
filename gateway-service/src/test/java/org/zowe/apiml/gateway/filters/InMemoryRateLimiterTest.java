@@ -56,6 +56,7 @@ public class InMemoryRateLimiterTest {
         assertFalse(response.isAllowed(), "Fourth request should not be allowed");
     }
 
+
     @Test
     public void testDifferentClientIdHasSeparateBucket() {
         String clientId1 = "client1";

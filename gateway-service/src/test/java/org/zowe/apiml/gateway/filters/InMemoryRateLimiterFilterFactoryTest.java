@@ -92,6 +92,19 @@ public class InMemoryRateLimiterFilterFactoryTest {
     }
 
     @Test
+    public void apply_shouldReturnError_whenJsonProcessingExceptionIsThrown() throws JsonProcessingException {
+        when(messageService.createMessage(anyString(),anyString(),any())).thenReturn(message);
+        when(message.mapToView()).thenReturn(new ApiMessageView());
+        when(objectMapper.writeValueAsBytes(any())).thenThrow(new JsonProcessingException("Mocked exception") {});
+        when(keyResolver.resolve(exchange)).thenReturn(Mono.just("testKey"));
+        when(rateLimiter.isAllowed(anyString(), anyString())).thenReturn(Mono.just(new InMemoryRateLimiter.Response(false, Map.of())));
+
+        StepVerifier.create(filterFactory.apply(config).filter(exchange, chain))
+            .expectError(JsonProcessingException.class)
+            .verify();
+    }
+
+    @Test
     public void apply_shouldAllowRequest_whenKeyIsNull() {
         when(keyResolver.resolve(exchange)).thenReturn(Mono.just(""));
         when(chain.filter(any(ServerWebExchange.class))).thenReturn(Mono.empty());
