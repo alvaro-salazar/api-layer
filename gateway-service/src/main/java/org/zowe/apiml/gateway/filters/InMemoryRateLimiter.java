@@ -32,7 +32,7 @@ public class InMemoryRateLimiter implements RateLimiter<InMemoryRateLimiter.Conf
     @Value("${apiml.gateway.rateLimiterTokens:20}")
     int tokens;
     @Value("${apiml.gateway.rateLimiterRefillDuration:1}")
-    Long refillDuration;
+    Integer refillDuration;
 
     @Override
     public Mono<Response> isAllowed(String routeId, String id) {
@@ -86,6 +86,6 @@ public class InMemoryRateLimiter implements RateLimiter<InMemoryRateLimiter.Conf
     public static class Config {
         private int capacity;
         private int tokens;
-        private Long refillDuration;
+        private int refillDuration;
     }
 }

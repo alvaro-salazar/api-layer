@@ -10,6 +10,7 @@
 
 package org.zowe.apiml.gateway.filters;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpCookie;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -19,11 +20,8 @@ import java.util.Collections;
 @Component
 public class KeyResolver implements org.springframework.cloud.gateway.filter.ratelimit.KeyResolver {
 
-    private final String cookieName;
-
-    public KeyResolver() {
-        this.cookieName = "apimlAuthenticationToken";
-    }
+    @Value("${apiml.routing.cookieNameForRateLimit:-}")
+    private String cookieName;
 
     @Override
     public Mono<String> resolve(org.springframework.web.server.ServerWebExchange exchange) {

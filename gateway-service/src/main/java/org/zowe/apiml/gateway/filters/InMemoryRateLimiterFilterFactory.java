@@ -10,35 +10,46 @@
 
 package org.zowe.apiml.gateway.filters;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.zowe.apiml.message.core.Message;
+import org.zowe.apiml.message.core.MessageService;
 import org.zowe.apiml.message.log.ApimlLogger;
 import org.zowe.apiml.product.logging.annotations.InjectApimlLogger;
 import reactor.core.publisher.Mono;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Component
 public class InMemoryRateLimiterFilterFactory extends AbstractGatewayFilterFactory<InMemoryRateLimiterFilterFactory.Config> {
 
     @InjectApimlLogger
-    private final ApimlLogger apimlLog = ApimlLogger.empty();
+    private ApimlLogger apimlLog = ApimlLogger.empty();
+
     private final InMemoryRateLimiter rateLimiter;
+
     private final KeyResolver keyResolver;
+
     @Value("${apiml.routing.servicesToLimitRequestRate:-}")
     List<String> serviceIds;
 
-    public InMemoryRateLimiterFilterFactory(InMemoryRateLimiter rateLimiter, KeyResolver keyResolver) {
+    private final ObjectMapper mapper;
+
+    private final MessageService messageService;
+
+    public InMemoryRateLimiterFilterFactory(InMemoryRateLimiter rateLimiter, KeyResolver keyResolver, ObjectMapper mapper, MessageService messageService) {
         super(Config.class);
         this.rateLimiter = rateLimiter;
         this.keyResolver = keyResolver;
+        this.mapper = mapper;
+        this.messageService = messageService;
     }
 
     @Override
@@ -56,12 +67,13 @@ public class InMemoryRateLimiterFilterFactory extends AbstractGatewayFilterFacto
                         } else {
                             apimlLog.log("org.zowe.apiml.gateway.connectionsLimitApproached", "Connections limit exceeded for service '{}'", requestPath);
                             exchange.getResponse().setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
-                            exchange.getResponse().getHeaders().setContentType(MediaType.TEXT_HTML);
-                            String errorHtml = "<html><body><h1>429 Too Many Requests</h1>" +
-                                "<p>The connection limit for the service '" + requestPath + "' has been exceeded. Please try again later.</p>" +
-                                "</body></html>";
-                            byte[] bytes = errorHtml.getBytes(StandardCharsets.UTF_8);
-                            return exchange.getResponse().writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(bytes)));
+                            Message message = messageService.createMessage("org.zowe.apiml.gateway.connectionsLimitApproached", "Connections limit exceeded for service '{}'", requestPath);
+                            try {
+                                return exchange.getResponse().writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(mapper.writeValueAsBytes(message.mapToView()))));
+                            } catch (JsonProcessingException e) {
+                                apimlLog.log("org.zowe.apiml.security.errorWritingResponse", e.getMessage());
+                                return Mono.error(e);
+                            }
                         }
                     });
                 });

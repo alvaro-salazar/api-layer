@@ -10,6 +10,8 @@
 
 package org.zowe.apiml.gateway.filters;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -19,6 +21,9 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.server.ServerWebExchange;
+import org.zowe.apiml.message.api.ApiMessageView;
+import org.zowe.apiml.message.core.Message;
+import org.zowe.apiml.message.core.MessageService;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -38,13 +43,19 @@ public class InMemoryRateLimiterFilterFactoryTest {
     private String serviceId;
     private MockServerHttpRequest request;
     private InMemoryRateLimiterFilterFactory.Config config;
+    private MessageService messageService;
+    private ObjectMapper objectMapper;
+    private Message message;
 
     @BeforeEach
     public void setUp() {
         serviceId = "testService";
         rateLimiter = mock(InMemoryRateLimiter.class);
         keyResolver = mock(KeyResolver.class);
-        filterFactory = new InMemoryRateLimiterFilterFactory(rateLimiter, keyResolver);
+        messageService = mock(MessageService.class);
+        message = mock(Message.class);
+        objectMapper = mock(ObjectMapper.class);
+        filterFactory = new InMemoryRateLimiterFilterFactory(rateLimiter, keyResolver,objectMapper, messageService);
         filterFactory.serviceIds = List.of(serviceId);
         request = MockServerHttpRequest.get("/" + serviceId).build();
         exchange = MockServerWebExchange.from(request);
@@ -66,7 +77,10 @@ public class InMemoryRateLimiterFilterFactoryTest {
     }
 
     @Test
-    public void apply_shouldReturn429_whenTokensAreExhausted() {
+    public void apply_shouldReturn429_whenTokensAreExhausted() throws JsonProcessingException {
+        when(messageService.createMessage(anyString(),anyString(),any())).thenReturn(message);
+        when(message.mapToView()).thenReturn(new ApiMessageView());
+        when(objectMapper.writeValueAsBytes(any())).thenReturn("Serialized Message".getBytes());
         when(keyResolver.resolve(exchange)).thenReturn(Mono.just("testKey"));
         when(rateLimiter.isAllowed(anyString(), anyString())).thenReturn(Mono.just(new InMemoryRateLimiter.Response(false, Map.of())));
 

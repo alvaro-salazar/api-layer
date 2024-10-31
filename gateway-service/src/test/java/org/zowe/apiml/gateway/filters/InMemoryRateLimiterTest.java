@@ -31,7 +31,7 @@ public class InMemoryRateLimiterTest {
         rateLimiter = new InMemoryRateLimiter();
         rateLimiter.capacity = 3;
         rateLimiter.tokens = 3;
-        rateLimiter.refillDuration = 1L;
+        rateLimiter.refillDuration = 1;
     }
 
     @Test

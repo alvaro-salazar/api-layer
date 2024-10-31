@@ -10,6 +10,7 @@
 
 package org.zowe.apiml.functional.gateway;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
@@ -59,7 +60,7 @@ public class InMemoryRateLimiterFilterFactoryIntegrationTest {
     }
 
     @Test
-    void testRateLimitingWhenExceeded() {
+    void testRateLimitingWhenExceeded() throws JsonProcessingException {
         for (int i = 0; i < bucketCapacity; i++) {
             client.get()
                 .cookie("apimlAuthenticationToken", "validTokenValue")
@@ -70,9 +71,7 @@ public class InMemoryRateLimiterFilterFactoryIntegrationTest {
             .cookie("apimlAuthenticationToken", "validTokenValue")
             .exchange()
             .expectStatus().isEqualTo(HttpStatus.TOO_MANY_REQUESTS)
-            .expectHeader().contentType("text/html")
-            .expectBody(String.class)
-            .value(body -> body.contains("429 Too Many Requests"));
+            .expectBody(String.class);
     }
 
     @Test
@@ -87,10 +86,7 @@ public class InMemoryRateLimiterFilterFactoryIntegrationTest {
         client.get()
             .cookie("apimlAuthenticationToken", "theFirstUser")
             .exchange()
-            .expectStatus().isEqualTo(HttpStatus.TOO_MANY_REQUESTS)
-            .expectHeader().contentType("text/html")
-            .expectBody(String.class)
-            .value(body -> body.contains("429 Too Many Requests"));
+            .expectStatus().isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
 
         // the second user requires access
         client.get()
