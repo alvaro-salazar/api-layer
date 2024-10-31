@@ -33,9 +33,7 @@ import java.util.Collections;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
 import static io.restassured.http.ContentType.XML;
-import static org.apache.http.HttpStatus.SC_BAD_REQUEST;
-import static org.apache.http.HttpStatus.SC_NOT_FOUND;
-import static org.apache.http.HttpStatus.SC_OK;
+import static org.apache.http.HttpStatus.*;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
@@ -186,6 +184,22 @@ class PassTicketTest implements TestWithStartedInstances {
             .then()
                 .statusCode(is(SC_BAD_REQUEST))
                 .body("messages.find { it.messageNumber == 'ZWEAG140E' }.messageContent", equalTo(expectedMessage));
+            //@formatter:on
+        }
+        @Test
+        void givenGetHTTPMethod_thenReturnNotAllowed() {
+            String expectedMessage = "Authentication method 'GET' is not supported for URL '/zaas/scheme/ticket'";
+
+            //@formatter:off
+            given()
+                .contentType(JSON)
+                .body(new TicketRequest())
+                .cookie(COOKIE, jwt)
+            .when()
+                .get(ZAAS_TICKET_URI)
+            .then()
+                .statusCode(is(SC_METHOD_NOT_ALLOWED))
+                .body("messages.find { it.messageNumber == 'ZWEAG101E' }.messageContent", equalTo(expectedMessage));
             //@formatter:on
         }
 

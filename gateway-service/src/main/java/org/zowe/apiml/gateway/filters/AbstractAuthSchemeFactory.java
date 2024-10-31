@@ -174,11 +174,11 @@ public abstract class AbstractAuthSchemeFactory<T extends AbstractAuthSchemeFact
     ) {
         return requestCreator.apply(serviceInstanceIterator.next())
             .exchangeToMono(clientResp -> {
-                Supplier<Mono<AuthorizationResponse<R>>> unauthorized = () -> clientResp.bodyToMono(getResponseClass()).map(b -> new AuthorizationResponse<>(clientResp.headers(), b));
+                Supplier<Mono<AuthorizationResponse<R>>> authResponseSupplier = () -> clientResp.bodyToMono(getResponseClass()).map(b -> new AuthorizationResponse<>(clientResp.headers(), b));
                 return switch (clientResp.statusCode().value()) {
                     case SC_UNAUTHORIZED -> Mono.just(new AuthorizationResponse<R>(clientResp.headers(), null));
-                    case SC_OK -> unauthorized.get();
-                    default -> serviceInstanceIterator.hasNext() ? requestWithHa(serviceInstanceIterator, requestCreator) : unauthorized.get();
+                    case SC_OK -> authResponseSupplier.get();
+                    default -> serviceInstanceIterator.hasNext() ? requestWithHa(serviceInstanceIterator, requestCreator) : authResponseSupplier.get();
                 };
             });
     }
@@ -193,7 +193,7 @@ public abstract class AbstractAuthSchemeFactory<T extends AbstractAuthSchemeFact
             throw new ServiceNotAccessibleException("There are no instance of ZAAS available");
         }
 
-        return requestWithHa(i, requestCreator).flatMap(responseProcessor);
+        return requestWithHa(i, requestCreator).switchIfEmpty(Mono.just(new AuthorizationResponse<>(null,null))).flatMap(responseProcessor);
     }
 
     /**

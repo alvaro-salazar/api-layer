@@ -19,18 +19,12 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.util.Assert;
-import org.springframework.web.HttpMediaTypeException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.reactive.resource.NoResourceFoundException;
-import org.springframework.web.server.MethodNotAllowedException;
-import org.springframework.web.servlet.HandlerExceptionResolver;
-import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.zowe.apiml.message.api.ApiMessageView;
 import org.zowe.apiml.message.core.MessageService;
@@ -39,7 +33,6 @@ import org.zowe.apiml.security.common.auth.saf.EndpointImproprietyConfigureExcep
 import org.zowe.apiml.security.common.auth.saf.UnsupportedResourceClassException;
 import org.zowe.apiml.security.common.token.TokenExpireException;
 import org.zowe.apiml.security.common.token.TokenNotValidException;
-import org.zowe.apiml.zaas.error.ErrorUtils;
 import org.zowe.apiml.zaas.security.service.saf.SafIdtAuthException;
 import org.zowe.apiml.zaas.security.service.saf.SafIdtException;
 import org.zowe.apiml.zaas.security.service.schema.source.AuthSchemeException;
@@ -52,7 +45,7 @@ import javax.net.ssl.SSLException;
 @ControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RequiredArgsConstructor
-public class ZaasExceptionHandler implements HandlerExceptionResolver {
+public class ZaasExceptionHandler {
 
     private static final String WWW_AUTHENTICATE = "WWW-Authenticate";
     private static String WWW_AUTHENTICATE_FORMAT = "Basic realm=\"%s\"";
@@ -155,12 +148,22 @@ public class ZaasExceptionHandler implements HandlerExceptionResolver {
             .body(messageView);
     }
 
-    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
-    public ResponseEntity<ApiMessageView> handleNoResourceFoundException(NoResourceFoundException noResourceFoundException) {
-        log.debug("Resource not found", noResourceFoundException);
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<ApiMessageView> handleNoResourceFoundException(NoHandlerFoundException e) {
+        log.debug("Resource not found", e);
         ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.common.notFound").mapToView();
         return ResponseEntity
             .status(HttpStatus.NOT_FOUND)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(messageView);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiMessageView> handleMethodNotAllowedException(HttpServletRequest request, HttpRequestMethodNotSupportedException notAllowedMethodException) {
+        log.debug("MethodNotAllowedException exception", notAllowedMethodException);
+        ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.security.invalidMethod", request.getMethod(), request.getRequestURI()).mapToView();
+        return ResponseEntity
+            .status(HttpStatus.METHOD_NOT_ALLOWED)
             .contentType(MediaType.APPLICATION_JSON)
             .body(messageView);
     }
@@ -204,21 +207,6 @@ public class ZaasExceptionHandler implements HandlerExceptionResolver {
             .status(HttpStatus.INTERNAL_SERVER_ERROR)
             .contentType(MediaType.APPLICATION_JSON)
             .body(messageView);
-    }
-
-    @Override
-    public ModelAndView resolveException(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
-        request.setAttribute(ErrorUtils.ATTR_ERROR_EXCEPTION, ex);
-
-        if (ex instanceof MethodNotAllowedException || ex instanceof HttpRequestMethodNotSupportedException) {
-            return new ModelAndView("/error/405");
-        } else if (ex instanceof HttpMediaTypeException) {
-            return new ModelAndView("/error/415");
-        } else if (ex instanceof HttpMessageNotReadableException) {
-            return new ModelAndView("/error/400");
-        }
-
-        return null;
     }
 
 }

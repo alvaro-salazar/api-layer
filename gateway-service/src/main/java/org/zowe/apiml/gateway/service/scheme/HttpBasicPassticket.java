@@ -31,7 +31,7 @@ public class HttpBasicPassticket implements SchemeHandler {
     @Override
     public void apply(ServiceInstance serviceInstance, RouteDefinition routeDefinition, Authentication auth) {
         if (StringUtils.isEmpty(auth.getApplid())) {
-            log.warn("Service {} does not have configured APPLID. The authorization scheme will be ignored", serviceInstance.getServiceId());
+            log.debug("Service {} does not have configured APPLID. The authorization scheme will be ignored", serviceInstance.getServiceId());
             return;
         }
 

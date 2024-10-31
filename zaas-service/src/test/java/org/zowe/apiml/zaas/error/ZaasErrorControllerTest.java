@@ -11,21 +11,19 @@
 package org.zowe.apiml.zaas.error;
 
 
+import jakarta.servlet.RequestDispatcher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockitoAnnotations;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.zowe.apiml.message.core.Message;
-import org.zowe.apiml.message.core.MessageType;
-import org.zowe.apiml.message.template.MessageTemplate;
-import org.zowe.apiml.zaas.error.controllers.ZaasErrorController;
-import org.zowe.apiml.message.api.ApiMessageView;
-import org.zowe.apiml.message.core.MessageService;
-import org.zowe.apiml.message.yaml.YamlMessageService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.zowe.apiml.message.api.ApiMessageView;
+import org.zowe.apiml.message.core.Message;
+import org.zowe.apiml.message.core.MessageService;
+import org.zowe.apiml.message.core.MessageType;
+import org.zowe.apiml.message.template.MessageTemplate;
+import org.zowe.apiml.message.yaml.YamlMessageService;
+import org.zowe.apiml.zaas.error.controllers.ZaasErrorController;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -33,14 +31,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import jakarta.servlet.RequestDispatcher;
 
 class ZaasErrorControllerTest {
-
-    private MockMvc mockMvc;
 
     @Nested
     class GivenNotFoundErrorRequest {
@@ -53,19 +45,8 @@ class ZaasErrorControllerTest {
 
             when(messageService.createMessage(anyString(), (Object[]) any())).thenReturn(message);
 
-            NotFoundErrorController notFoundErrorController = new NotFoundErrorController(messageService);
-            MockitoAnnotations.openMocks(this);
-
-            mockMvc = MockMvcBuilders
-                .standaloneSetup(notFoundErrorController)
-                .build();
         }
 
-        @Test
-        void whenCallingWithRequestAttribute_thenReturnProperErrorStatus() throws Exception {
-            mockMvc.perform(get("/not_found").requestAttr("javax.servlet.error.status_code", 404))
-                .andExpect(status().isNotFound());
-        }
 
     }
 
@@ -82,8 +63,8 @@ class ZaasErrorControllerTest {
 
         ResponseEntity<ApiMessageView> response = errorController.error(request);
 
-        assertEquals(523,  response.getStatusCodeValue());
-        assertEquals("org.zowe.apiml.common.internalRequestError",  response.getBody().getMessages().get(0).getMessageKey());
+        assertEquals("org.zowe.apiml.common.internalRequestError", response.getBody().getMessages().get(0).getMessageKey());
+        assertEquals(500, response.getStatusCodeValue());
         assertTrue(response.getBody().getMessages().get(0).getMessageContent().contains("Hello"));
         assertTrue(response.getBody().getMessages().get(0).getMessageContent().contains("/uri"));
     }

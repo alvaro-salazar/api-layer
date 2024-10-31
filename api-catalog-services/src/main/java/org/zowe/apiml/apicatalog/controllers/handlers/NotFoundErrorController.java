@@ -25,7 +25,7 @@ import jakarta.servlet.http.HttpServletRequest;
  */
 @Controller
 @Order(Ordered.HIGHEST_PRECEDENCE)
-public class NotFoundErrorController implements ApimlErrorController {
+public class NotFoundErrorController {
 
 
     private static final String PATH = "/not_found";    // NOSONAR
@@ -47,10 +47,6 @@ public class NotFoundErrorController implements ApimlErrorController {
         return "error";
     }
 
-    @Override
-    public String getErrorPath() {
-        return PATH;
-    }
 }
 
 
