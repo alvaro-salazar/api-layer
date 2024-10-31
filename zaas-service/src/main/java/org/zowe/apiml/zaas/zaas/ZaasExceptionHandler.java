@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.util.Assert;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -205,6 +206,16 @@ public class ZaasExceptionHandler {
         ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.common.internalServerError").mapToView();
         return ResponseEntity
             .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(messageView);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiMessageView> handleUnsupportedMediaException(HttpMediaTypeNotSupportedException exception) {
+        log.debug("Requested media type is not supported", exception);
+        ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.common.unsupportedMediaType").mapToView();
+        return ResponseEntity
+            .status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
             .contentType(MediaType.APPLICATION_JSON)
             .body(messageView);
     }
