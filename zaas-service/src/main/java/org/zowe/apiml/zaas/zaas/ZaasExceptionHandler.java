@@ -19,6 +19,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.util.Assert;
@@ -74,8 +75,8 @@ public class ZaasExceptionHandler {
             .body(messageView);
     }
 
-    @ExceptionHandler(value = {ApplicationNameNotFoundException.class})
-    public ResponseEntity<ApiMessageView> handleApplIdNotFoundException(ApplicationNameNotFoundException ex) {
+    @ExceptionHandler(value = {ApplicationNameNotFoundException.class, HttpMessageNotReadableException.class})
+    public ResponseEntity<ApiMessageView> handleApplIdNotFoundException() {
         ApiMessageView messageView = messageService.createMessage("org.zowe.apiml.security.ticket.invalidApplicationName").mapToView();
         return ResponseEntity
             .status(HttpStatus.BAD_REQUEST)
