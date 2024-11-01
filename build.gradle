@@ -327,3 +327,15 @@ if (hasProperty('buildScan')) {
         termsOfServiceAgree = 'yes'
     }
 }
+
+plugins {
+  id "org.sonarqube" version "5.1.0.4882"
+}
+
+sonar {
+  properties {
+    property "sonar.projectKey", "alvaro-salazar_zaproxy"
+    property "sonar.organization", "alvaro-salazar"
+    property "sonar.host.url", "https://sonarcloud.io"
+  }
+}
